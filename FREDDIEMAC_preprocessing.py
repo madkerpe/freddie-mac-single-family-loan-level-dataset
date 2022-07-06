@@ -26,8 +26,8 @@ def orig_fill_NAN(df):
 
 def orig_change_data_type(df):
     #Change the data types for all column
-    df[['CREDIT_SCORE','MSA','MI_PCT','NUMBER_OF_BORROWERS','NUMBER_OF_UNITS','CLTV','DTI','ORIGINAL_UPB','LTV','POSTAL_CODE','ORIGINAL_LOAN_TERM']] = df[['CREDIT_SCORE','MSA','MI_PCT','NUMBER_OF_BORROWERS','NUMBER_OF_UNITS','CLTV','DTI','ORIGINAL_UPB','LTV','POSTAL_CODE','ORIGINAL_LOAN_TERM']].astype('int64')
-    df[['SUPER_CONFORMING_FLAG','SERVICER_NAME']] = df[['SUPER_CONFORMING_FLAG','SERVICER_NAME']].astype('str')
+    # df[['CREDIT_SCORE','MSA','MI_PCT','NUMBER_OF_BORROWERS','NUMBER_OF_UNITS','CLTV','DTI','ORIGINAL_UPB','LTV','POSTAL_CODE','ORIGINAL_LOAN_TERM']] = df[['CREDIT_SCORE','MSA','MI_PCT','NUMBER_OF_BORROWERS','NUMBER_OF_UNITS','CLTV','DTI','ORIGINAL_UPB','LTV','POSTAL_CODE','ORIGINAL_LOAN_TERM']].astype('int64')
+    # df[['SUPER_CONFORMING_FLAG','SERVICER_NAME']] = df[['SUPER_CONFORMING_FLAG','SERVICER_NAME']].astype('str')
     return df
 
 def orig_mutate_data(df):
@@ -54,10 +54,12 @@ def perf_fill_NAN(df):
     df['MISCELLANEOUS_EXPENSES']=df['MISCELLANEOUS_EXPENSES'].fillna(0)
     df['ACTUAL_LOSS_CALCULATION']=df['ACTUAL_LOSS_CALCULATION'].fillna(0)
     df['MODIFICATION_COST']=df['MODIFICATION_COST'].fillna(0)
+
     return df
 
 def perf_change_data_type(df):
     #Change the data types for all column
+    df[['CURRENT_LOAN_DELINQUENCY_STATUS']]=df[['CURRENT_LOAN_DELINQUENCY_STATUS']].astype('int')
     #df[['loan_age','mths_remng','cd_zero_bal','non_int_brng_upb','delq_sts','actual_loss']] = df[['loan_age','mths_remng','cd_zero_bal','non_int_brng_upb','delq_sts','actual_loss']].astype('int64')
     #df[['svcg_cycle','dt_zero_bal','dt_lst_pi']] = df[['svcg_cycle','dt_zero_bal','dt_lst_pi']].astype('str')
     return df
@@ -66,11 +68,16 @@ def perf_mutate_data(df):
     df['QUARTER'] = [x[4:5] for x in (df['LOAN_SEQUENCE_NUMBER'].apply(lambda x: x))]
     df['YEAR'] = [x[1:3] for x in (df['LOAN_SEQUENCE_NUMBER'].apply(lambda x: x))]
     df['LOAN_SEQUENCE_NUMBER'] = [x[5:] for x in (df['LOAN_SEQUENCE_NUMBER'].apply(lambda x: x))]
+
+    #replacing REO Acquisition with the value 99
+    df['REO_ACQUISITION'] = df['CURRENT_LOAN_DELINQUENCY_STATUS'].map(lambda x : 1 if (x == "RA") else 0, axis=1)
+    df['CURRENT_LOAN_DELINQUENCY_STATUS'] = df['CURRENT_LOAN_DELINQUENCY_STATUS'].map(lambda x : x if (x != "RA") else 99, axis=1)
+
     return df
 
 
 #Create a data frame for all Origination files
-def createOriginationCombined(input_filenames, headers, output_filename):
+def createOriginationCombined(input_filenames, headers, data_types, output_filename):
     
     annual_dataset_elements = tqdm(glob.glob(input_filenames))
     first_annual_dataset_elements = True
@@ -78,7 +85,8 @@ def createOriginationCombined(input_filenames, headers, output_filename):
     with open(output_filename, 'w',encoding='utf-8',newline="") as file:
         for filename in annual_dataset_elements: 
             annual_dataset_elements.set_description("Working on  %s" % filename)
-            orig_df = pd.read_csv(filename, sep="|", names=headers, skipinitialspace=True) 
+            orig_df = pd.read_csv(filename, sep="|", names=headers, dtype=data_types, skipinitialspace=True) 
+            
             orig_df = orig_fill_NAN(orig_df)
             orig_df = orig_change_data_type(orig_df)
             orig_df = orig_mutate_data(orig_df)
@@ -86,17 +94,18 @@ def createOriginationCombined(input_filenames, headers, output_filename):
             orig_df.to_csv(output_filename, mode='a', header=first_annual_dataset_elements,index=False)
             first_annual_dataset_elements = False
 
-def createPerformanceCombined(input_filenames, headers, output_filename):
+def createPerformanceCombined(input_filenames, headers, data_types, output_filename):
     annual_dataset_elements = tqdm(glob.glob(input_filenames))
     first_annual_dataset_elements = True
  
     with open(output_filename, 'w',encoding='utf-8',newline="") as file:
         for filename in annual_dataset_elements: 
             annual_dataset_elements.set_description("Working on  %s" % filename)
-            perf_df = pd.read_csv(filename ,sep="|", names=headers,skipinitialspace=True)
+            perf_df = pd.read_csv(filename, sep="|", names=headers, dtype=data_types, skipinitialspace=True)
             
             perf_df = perf_fill_NAN(perf_df)
-            #perf_df = perf_change_data_type(perf_df)
+            perf_df = perf_mutate_data(perf_df)
+            perf_df = perf_change_data_type(perf_df)
             
             perf_df.to_csv(output_filename, mode='a', header=first_annual_dataset_elements,index=False)
             first_annual_dataset_elements = False
