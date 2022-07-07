@@ -18,27 +18,52 @@ def aggregate_to_blumenstock_exp4(df_orig, df_perf):
 
     # number of times being 30 days delinquent in the last 12 months
     df_perf['T_DEL_30D'] = df_perf['CURRENT_LOAN_DELINQUENCY_STATUS'].map(lambda x: 1 if (x == 1) else 0)
-    df_t_act_12m = df_perf.groupby('LOAN_SEQUENCE_NUMBER')['T_DEL_30D'].sum()
-    df = pd.merge(df, df_t_act_12m, on='LOAN_SEQUENCE_NUMBER', how='left')
+    df_t_del_30d = df_perf.groupby('LOAN_SEQUENCE_NUMBER')['T_DEL_30D'].sum()
+    df = pd.merge(df, df_t_del_30d, on='LOAN_SEQUENCE_NUMBER', how='left')
 
     # number of times being 60 days delinquent in the last 12 months
     df_perf['T_DEL_60D'] = df_perf['CURRENT_LOAN_DELINQUENCY_STATUS'].map(lambda x: 1 if (x > 1) else 0)
-    df_t_act_12m = df_perf.groupby('LOAN_SEQUENCE_NUMBER')['T_DEL_60D'].sum()
-    df = pd.merge(df, df_t_act_12m, on='LOAN_SEQUENCE_NUMBER', how='left')
+    df_t_del_60d = df_perf.groupby('LOAN_SEQUENCE_NUMBER')['T_DEL_60D'].sum()
+    df = pd.merge(df, df_t_del_60d, on='LOAN_SEQUENCE_NUMBER', how='left')
 
-    LOAN_LEVEL_VARIABLES_CREATED_VARIABLES = ['BAL_REPAID', 'T_ACT_12M', 'T_DEL_30D', 'T_DEL_60D']
+    # loan turning into 3 month delinquency
+    # TODO concatenate to this length
+    df_perf['DEFAULT'] = df_perf['CURRENT_LOAN_DELINQUENCY_STATUS'].map(lambda x: 1 if (x > 2) else 0)
+    df_default = df_perf.groupby('LOAN_SEQUENCE_NUMBER')['DEFAULT'].sum()
+    df_default = df_default.map(lambda x: 1 if x > 0 else 0)
+    df = pd.merge(df, df_default, on='LOAN_SEQUENCE_NUMBER', how='left')
 
+    # loan prepaying? "or Matured? (Voluntary payoff)"?
+    df_perf['PREPAYMENT_OR_MATURED'] = df_perf['ZERO_BALANCE_CODE'].map(lambda x: 1 if (x == "01") else 0)
+    df_prepayment = df_perf.groupby('LOAN_SEQUENCE_NUMBER')['PREPAYMENT_OR_MATURED'].sum()
+    df_prepayment = df_prepayment.map(lambda x: 1 if x > 0 else 0)
+    df = pd.merge(df, df_prepayment, on='LOAN_SEQUENCE_NUMBER', how='left')
+
+    # remaining months
+    df_remaining_months = df_perf.groupby('LOAN_SEQUENCE_NUMBER')['REMAINING_MONTHS_TO_LEGAL_MATURITY'].min()
+    df = pd.merge(df, df_remaining_months, on='LOAN_SEQUENCE_NUMBER', how='left')
+
+    LOAN_LEVEL_VARIABLES_CREATED_VARIABLES = ['BAL_REPAID', 'T_ACT_12M', 'T_DEL_30D', 'T_DEL_60D', 'DEFAULT', 'PREPAYMENT_OR_MATURED', 'REMAINING_MONTHS_TO_LEGAL_MATURITY']
     df = df[LOAN_LEVEL_VARIABLES_COPIED + LOAN_LEVEL_VARIABLES_CREATED_VARIABLES]
+    
+    # create labels (0 -> prepay, 1 -> default, 2 -> full repay, 3 -> censored)
+    def label_row(row):
 
+        if row['PREPAYMENT_OR_MATURED'] == 1:
+            if row['REMAINING_MONTHS_TO_LEGAL_MATURITY'] >= 2:
+                return 0
+            else:
+                return 2
+        
+        if row['DEFAULT'] == 1:
+            return 1
+        
+        else:
+            return 3
+
+    df['LABEL'] = df.apply(lambda row: label_row(row), axis=1)
+
+    LOAN_LEVEL_VARIABLES_CREATED_VARIABLES_NEEDED = ['BAL_REPAID', 'T_ACT_12M', 'T_DEL_30D', 'T_DEL_60D', 'LABEL']
+    df = df[LOAN_LEVEL_VARIABLES_COPIED + LOAN_LEVEL_VARIABLES_CREATED_VARIABLES_NEEDED]
 
     return df
-
-
-
-orig_headers = ['CREDIT_SCORE','FIRST_PAYMENT_DATE','FIRST_TIME_HOMEBUYER_FLAG','MATURITY_DATE','MSA','MI_PCT',
-                'NUMBER_OF_UNITS','OCCUPANCY_STATUS','CLTV','DTI','ORIGINAL_UPB','LTV','ORIGINAL_INTEREST_RATE',
-                'CHANNEL','PPM','AMORTIZATION_TYPE','PROPERTY_STATE', 'PROPERTY_TYPE','POSTAL_CODE',
-                'LOAN_SEQUENCE_NUMBER','LOAN_PURPOSE', 'ORIGINAL_LOAN_TERM','NUMBER_OF_BORROWERS','SELLER_NAME',
-                'SERVICER_NAME','SUPER_CONFORMING_FLAG','PRE-RELIEF_REFINANCE_LOAN_SEQUENCE_NUMBER', 
-                'PROGRAM_INDICATOR', 'RELIEF_REFINANCE_INDICATOR', 'PROPERTY_VALUATION_METHOD', 'IO_INDICATOR']
-
