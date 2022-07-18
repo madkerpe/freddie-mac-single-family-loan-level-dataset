@@ -37,22 +37,6 @@ def aggregate_to_blumenstock_exp4(df_orig, df_perf_shortened):
     df_t_del_60d = df_perf_shortened.groupby("LOAN_SEQUENCE_NUMBER")["T_DEL_60D"].sum()
     df = pd.merge(df, df_t_del_60d, on="LOAN_SEQUENCE_NUMBER", how="left")
 
-    # # loan turning into 3 month delinquency
-    # df_perf_shortened["DEFAULT"] = df_perf_shortened["CURRENT_LOAN_DELINQUENCY_STATUS"].map(lambda x: 1 if (x > 2) else 0)
-    # df_default = df_perf_shortened.groupby("LOAN_SEQUENCE_NUMBER")["DEFAULT"].sum()
-    # df_default = df_default.map(lambda x: 1 if x > 0 else 0)
-    # df = pd.merge(df, df_default, on="LOAN_SEQUENCE_NUMBER", how="left")
-
-    # # loan prepaying? "or Matured? (Voluntary payoff)"?
-    # df_perf_shortened["PREPAYMENT_OR_MATURED"] = df_perf_shortened["ZERO_BALANCE_CODE"].map(lambda x: 1 if (x == "01") else 0)
-    # df_prepayment = df_perf_shortened.groupby("LOAN_SEQUENCE_NUMBER")["PREPAYMENT_OR_MATURED"].sum()
-    # df_prepayment = df_prepayment.map(lambda x: 1 if x > 0 else 0)
-    # df = pd.merge(df, df_prepayment, on="LOAN_SEQUENCE_NUMBER", how="left")
-
-    # remaining months
-    # df_remaining_months = df_perf_shortened.groupby("LOAN_SEQUENCE_NUMBER")["REMAINING_MONTHS_TO_LEGAL_MATURITY"].min().rename("REMAINING_MONTHS")
-    # df = pd.merge(df, df_remaining_months, on="LOAN_SEQUENCE_NUMBER", how="left")
-
     LOAN_LEVEL_VARIABLES_CREATED_VARIABLES = [
         "BAL_REPAID",
         "T_ACT_12M",
