@@ -34,6 +34,7 @@ def orig_change_data_type(df):
 
 
 def orig_mutate_data(df):
+    df["ORIGINAL_LOAN_SEQUENCE_NUMBER"] = df["LOAN_SEQUENCE_NUMBER"].astype(str)
     df["QUARTER"] = [x[4:5] for x in (df["LOAN_SEQUENCE_NUMBER"].apply(lambda x: x))]
     df["YEAR"] = [x[1:3] for x in (df["LOAN_SEQUENCE_NUMBER"].apply(lambda x: x))]
     df["LOAN_SEQUENCE_NUMBER"] = [x[5:] for x in (df["LOAN_SEQUENCE_NUMBER"].apply(lambda x: x))]
@@ -69,6 +70,7 @@ def perf_change_data_type(df):
 
 
 def perf_mutate_data(df):
+    df["ORIGINAL_LOAN_SEQUENCE_NUMBER"] = df["LOAN_SEQUENCE_NUMBER"].astype(str)
     df["QUARTER"] = [x[4:5] for x in (df["LOAN_SEQUENCE_NUMBER"].apply(lambda x: x))]
     df["YEAR"] = [x[1:3] for x in (df["LOAN_SEQUENCE_NUMBER"].apply(lambda x: x))]
     df["LOAN_SEQUENCE_NUMBER"] = [x[5:] for x in (df["LOAN_SEQUENCE_NUMBER"].apply(lambda x: x))]

@@ -1,8 +1,6 @@
 import pandas as pd
 import dask.dataframe as dd
 
-
-
 def aggregate_to_blumenstock_exp4(df_orig, df_perf_shortened):
 
     """
@@ -25,8 +23,6 @@ def aggregate_to_blumenstock_exp4(df_orig, df_perf_shortened):
         'TIME_TO_EVENT', 
         'LABEL']
     """
-
-
 
     # loan-level-variables that can just be copied
     LOAN_LEVEL_VARIABLES_COPIED = [
@@ -72,7 +68,7 @@ def aggregate_to_blumenstock_exp4(df_orig, df_perf_shortened):
 
     df = df[LOAN_LEVEL_VARIABLES_COPIED + LOAN_LEVEL_VARIABLES_CREATED_VARIABLES]
 
-    df.rename({'ORIGINAL_INTEREST_RATE': 'INT_RATE',
+    df = df.rename(columns={'ORIGINAL_INTEREST_RATE': 'INT_RATE',
                 'ORIGINAL_UPB' : 'ORIG_UPB',
                 'CREDIT_SCORE': 'FICO_SCORE',
                 'DTI': 'DTI_R',
@@ -80,7 +76,7 @@ def aggregate_to_blumenstock_exp4(df_orig, df_perf_shortened):
                 'BAL_REPAID': 'BAL_REPAID',
                 'T_ACT_12M': 'T_ACT_12M',
                 'T_DEL_30D': 'T_DEL_30D',
-                'T_DEL_60D': 'T_DEL_60D'}, inplace=True)
+                'T_DEL_60D': 'T_DEL_60D'})
 
     return df
 
@@ -111,7 +107,6 @@ def aggregate_to_blumenstock_exp4_dynamic(df_orig, df_perf):
 
     # loan-level-variables that can just be copied from df_perf
     LOAN_LEVEL_VARIABLES_COPIED = [
-        "LOAN_SEQUENCE_NUMBER",
         "CURRENT_INTEREST_RATE",
         "ELTV",
         "CURRENT_ACTUAL_UPB",
@@ -145,7 +140,7 @@ def aggregate_to_blumenstock_exp4_dynamic(df_orig, df_perf):
 
     df = df[LOAN_LEVEL_VARIABLES_COPIED + LOAN_LEVEL_VARIABLES_STATIC + LOAN_LEVEL_VARIABLES_COMPUTED]        
 
-    return df_perf
+    return df
 
 
 """
