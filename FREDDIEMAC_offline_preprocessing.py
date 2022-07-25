@@ -1,7 +1,7 @@
 from tqdm import tqdm
 import glob
 from pathlib import Path
-import dask.dataframe as dd
+import pandas as pd
 
 
 def orig_fill_NAN(df):
@@ -33,10 +33,9 @@ def orig_change_data_type(df):
 
 
 def orig_mutate_data(df):
-    df["ORIGINAL_LOAN_SEQUENCE_NUMBER"] = df["LOAN_SEQUENCE_NUMBER"].astype(str)
     df["QUARTER"] = [x[4:5] for x in (df["LOAN_SEQUENCE_NUMBER"].apply(lambda x: x))]
     df["YEAR"] = [x[1:3] for x in (df["LOAN_SEQUENCE_NUMBER"].apply(lambda x: x))]
-    df["LOAN_SEQUENCE_NUMBER"] = [x[5:] for x in (df["LOAN_SEQUENCE_NUMBER"].apply(lambda x: x))]
+
     return df
 
 
@@ -58,6 +57,7 @@ def perf_fill_NAN(df):
     df["MISCELLANEOUS_EXPENSES"] = df["MISCELLANEOUS_EXPENSES"].fillna(0)
     df["ACTUAL_LOSS_CALCULATION"] = df["ACTUAL_LOSS_CALCULATION"].fillna(0)
     df["MODIFICATION_COST"] = df["MODIFICATION_COST"].fillna(0)
+    df["ELTV"] = df["ELTV"].fillna(0)
 
     return df
 
@@ -69,21 +69,19 @@ def perf_change_data_type(df):
 
 
 def perf_mutate_data(df):
-    df["ORIGINAL_LOAN_SEQUENCE_NUMBER"] = df["LOAN_SEQUENCE_NUMBER"].astype(str)
     df["QUARTER"] = [x[4:5] for x in (df["LOAN_SEQUENCE_NUMBER"].apply(lambda x: x))]
     df["YEAR"] = [x[1:3] for x in (df["LOAN_SEQUENCE_NUMBER"].apply(lambda x: x))]
-    df["LOAN_SEQUENCE_NUMBER"] = [x[5:] for x in (df["LOAN_SEQUENCE_NUMBER"].apply(lambda x: x))]
 
     # replacing REO Acquisition with the value 99
     df["REO_ACQUISITION"] = df["CURRENT_LOAN_DELINQUENCY_STATUS"].map(lambda x: 1 if (x == "RA") else 0)
     df["CURRENT_LOAN_DELINQUENCY_STATUS"] = df["CURRENT_LOAN_DELINQUENCY_STATUS"].map(lambda x: x if (x != "RA") else 99)
 
     df_length = (
-        df.groupby("ORIGINAL_LOAN_SEQUENCE_NUMBER")["LOAN_SEQUENCE_NUMBER"]
+        df.groupby("LOAN_SEQUENCE_NUMBER")["MONTHLY_REPORTING_PERIOD"]
         .count()
         .rename("ORIGINAL_TOTAL_OBSERVED_LENGTH")
     )
-    df = dd.merge(df, df_length, on="ORIGINAL_LOAN_SEQUENCE_NUMBER", how="left")
+    df = pd.merge(df, df_length, on="LOAN_SEQUENCE_NUMBER", how="left")
 
     return df
 
@@ -105,7 +103,7 @@ def pipeline_from_raw_data(input_data_orig_file_name,
     for path_orig, path_perf  in annual_dataset_iterator:
         annual_dataset_iterator.set_description("Working on %s and %s" % (Path(path_orig).stem, Path(path_perf).stem))
 
-        annual_df_orig = dd.read_csv(
+        annual_df_orig = pd.read_csv(
             path_orig,
             sep="|",
             names=headers_orig,
@@ -114,7 +112,7 @@ def pipeline_from_raw_data(input_data_orig_file_name,
         annual_df_orig = annual_df_orig.astype(data_types_orig)
         
 
-        annual_df_perf = dd.read_csv(
+        annual_df_perf = pd.read_csv(
             path_perf,
             sep="|",
             names=headers_perf,

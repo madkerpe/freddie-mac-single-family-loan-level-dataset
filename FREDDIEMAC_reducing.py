@@ -1,8 +1,8 @@
-import dask.dataframe as dd
+import pandas as pd
 
 def reduce_length_of_sequence(df_perf, length):
     return (
-        df_perf.groupby("ORIGINAL_LOAN_SEQUENCE_NUMBER")
+        df_perf.groupby("LOAN_SEQUENCE_NUMBER")
         .apply(lambda x: x.iloc[-length:])
         .reset_index(drop=True)
     )
@@ -19,7 +19,7 @@ def drop_short_sequences(df_orig_labeled, df_perf_labeled, min_length):
 def select_specific_original_loan_term(df_orig, df_perf, loan_terms_list):
     df_orig = df_orig[df_orig["ORIGINAL_LOAN_TERM"].isin(loan_terms_list)]
 
-    df_perf = dd.merge(df_perf, df_orig[["ORIGINAL_LOAN_SEQUENCE_NUMBER", "ORIGINAL_LOAN_TERM"]], on="ORIGINAL_LOAN_SEQUENCE_NUMBER", how="left")
+    df_perf = pd.merge(df_perf, df_orig[["LOAN_SEQUENCE_NUMBER", "ORIGINAL_LOAN_TERM"]], on="LOAN_SEQUENCE_NUMBER", how="left")
     df_perf = df_perf[df_perf["ORIGINAL_LOAN_TERM"].isin(loan_terms_list)]
 
     return df_orig, df_perf
