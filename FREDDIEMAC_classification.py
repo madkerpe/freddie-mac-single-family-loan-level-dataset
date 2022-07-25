@@ -1,22 +1,22 @@
-import pandas as pd
+import dask.dataframe as dd
 
 
 def assign_labels_to_orig(df_orig, df_perf):
     # loan turning into 3 month delinquency
     df_perf["DEFAULT"] = df_perf["CURRENT_LOAN_DELINQUENCY_STATUS"].map(lambda x: 1 if (x > 2) else 0)
-    df_default = df_perf.groupby("LOAN_SEQUENCE_NUMBER")["DEFAULT"].sum()
+    df_default = df_perf.groupby("ORIGINAL_LOAN_SEQUENCE_NUMBER")["DEFAULT"].sum()
     df_default = df_default.map(lambda x: 1 if x > 0 else 0)
-    df_orig = pd.merge(df_orig, df_default, on="LOAN_SEQUENCE_NUMBER", how="left")
+    df_orig = dd.merge(df_orig, df_default, on="ORIGINAL_LOAN_SEQUENCE_NUMBER", how="left")
 
     # loan either prepaying or matured? (Voluntary payoff)"?
     df_perf["PREPAYMENT_OR_MATURED"] = df_perf["ZERO_BALANCE_CODE"].map(lambda x: 1 if (x == "01") else 0)
-    df_prepayment = df_perf.groupby("LOAN_SEQUENCE_NUMBER")["PREPAYMENT_OR_MATURED"].sum()
+    df_prepayment = df_perf.groupby("ORIGINAL_LOAN_SEQUENCE_NUMBER")["PREPAYMENT_OR_MATURED"].sum()
     df_prepayment = df_prepayment.map(lambda x: 1 if x > 0 else 0)
-    df_orig = pd.merge(df_orig, df_prepayment, on="LOAN_SEQUENCE_NUMBER", how="left")
+    df_orig = dd.merge(df_orig, df_prepayment, on="ORIGINAL_LOAN_SEQUENCE_NUMBER", how="left")
 
     # remaining months
-    df_remaining_months = df_perf.groupby("LOAN_SEQUENCE_NUMBER")["REMAINING_MONTHS_TO_LEGAL_MATURITY"].min()
-    df_orig = pd.merge(df_orig, df_remaining_months, on="LOAN_SEQUENCE_NUMBER", how="left")
+    df_remaining_months = df_perf.groupby("ORIGINAL_LOAN_SEQUENCE_NUMBER")["REMAINING_MONTHS_TO_LEGAL_MATURITY"].min()
+    df_orig = dd.merge(df_orig, df_remaining_months, on="ORIGINAL_LOAN_SEQUENCE_NUMBER", how="left")
 
     # create labels (0 -> prepay, 1 -> default, 2 -> full repay, 3 -> censored)
     def label_row(row):
@@ -39,7 +39,7 @@ def assign_labels_to_orig(df_orig, df_perf):
 
 
 def assign_labels_to_perf(df_orig_with_label, df_perf):
-    df = pd.merge(df_perf, df_orig_with_label[["LOAN_SEQUENCE_NUMBER", "LABEL"]], on="LOAN_SEQUENCE_NUMBER", how="left")
+    df = dd.merge(df_perf, df_orig_with_label[["ORIGINAL_LOAN_SEQUENCE_NUMBER", "LABEL"]], on="ORIGINAL_LOAN_SEQUENCE_NUMBER", how="left")
     return df
 
 
@@ -87,17 +87,17 @@ def specific_cutoff(sequence):
 
 def cutoff_sequence_according_to_label(df_orig, df_perf_labeled):
 
-    df_perf = df_perf_labeled.groupby('LOAN_SEQUENCE_NUMBER').apply(lambda x: specific_cutoff(x)).reset_index(drop=True)
+    df_perf = df_perf_labeled.groupby('ORIGINAL_LOAN_SEQUENCE_NUMBER').apply(lambda x: specific_cutoff(x)).reset_index(drop=True)
 
     # remap the remaining months
-    df_remaining_months = df_perf.groupby("LOAN_SEQUENCE_NUMBER")["REMAINING_MONTHS_TO_LEGAL_MATURITY"].min()
+    df_remaining_months = df_perf.groupby("ORIGINAL_LOAN_SEQUENCE_NUMBER")["REMAINING_MONTHS_TO_LEGAL_MATURITY"].min()
     df_orig = df_orig.rename(columns={"REMAINING_MONTHS_TO_LEGAL_MATURITY": "ORIGINAL_REMAINING_MONTHS_TO_LEGAL_MATURITY"})
-    df_orig = pd.merge(df_orig, df_remaining_months, on="LOAN_SEQUENCE_NUMBER", how="left")
+    df_orig = dd.merge(df_orig, df_remaining_months, on="ORIGINAL_LOAN_SEQUENCE_NUMBER", how="left")
 
-    df_perf_grouped = df_perf.groupby("LOAN_SEQUENCE_NUMBER")["TOTAL_OBSERVED_LENGTH"].apply(lambda x: x.iloc[0])
-    df_orig = pd.merge(df_orig, df_perf_grouped, on="LOAN_SEQUENCE_NUMBER", how="left")
+    df_perf_grouped = df_perf.groupby("ORIGINAL_LOAN_SEQUENCE_NUMBER")["TOTAL_OBSERVED_LENGTH"].apply(lambda x: x.iloc[0])
+    df_orig = dd.merge(df_orig, df_perf_grouped, on="ORIGINAL_LOAN_SEQUENCE_NUMBER", how="left")
 
-    df_perf_grouped = df_perf.groupby("LOAN_SEQUENCE_NUMBER")["TIME_TO_EVENT"].apply(lambda x: x.iloc[0])
-    df_orig = pd.merge(df_orig, df_perf_grouped, on="LOAN_SEQUENCE_NUMBER", how="left")
+    df_perf_grouped = df_perf.groupby("ORIGINAL_LOAN_SEQUENCE_NUMBER")["TIME_TO_EVENT"].apply(lambda x: x.iloc[0])
+    df_orig = dd.merge(df_orig, df_perf_grouped, on="ORIGINAL_LOAN_SEQUENCE_NUMBER", how="left")
     
     return df_orig, df_perf

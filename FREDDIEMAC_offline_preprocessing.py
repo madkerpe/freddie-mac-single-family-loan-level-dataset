@@ -1,7 +1,6 @@
 from tqdm import tqdm
 import glob
 from pathlib import Path
-import pandas as pd
 import dask.dataframe as dd
 
 
@@ -80,11 +79,11 @@ def perf_mutate_data(df):
     df["CURRENT_LOAN_DELINQUENCY_STATUS"] = df["CURRENT_LOAN_DELINQUENCY_STATUS"].map(lambda x: x if (x != "RA") else 99)
 
     df_length = (
-        df.groupby("LOAN_SEQUENCE_NUMBER")["LOAN_AGE"]
+        df.groupby("ORIGINAL_LOAN_SEQUENCE_NUMBER")["LOAN_SEQUENCE_NUMBER"]
         .count()
         .rename("ORIGINAL_TOTAL_OBSERVED_LENGTH")
     )
-    df = pd.merge(df, df_length, on="LOAN_SEQUENCE_NUMBER", how="left")
+    df = dd.merge(df, df_length, on="ORIGINAL_LOAN_SEQUENCE_NUMBER", how="left")
 
     return df
 
@@ -106,7 +105,7 @@ def pipeline_from_raw_data(input_data_orig_file_name,
     for path_orig, path_perf  in annual_dataset_iterator:
         annual_dataset_iterator.set_description("Working on %s and %s" % (Path(path_orig).stem, Path(path_perf).stem))
 
-        annual_df_orig = pd.read_csv(
+        annual_df_orig = dd.read_csv(
             path_orig,
             sep="|",
             names=headers_orig,
@@ -115,7 +114,7 @@ def pipeline_from_raw_data(input_data_orig_file_name,
         annual_df_orig = annual_df_orig.astype(data_types_orig)
         
 
-        annual_df_perf = pd.read_csv(
+        annual_df_perf = dd.read_csv(
             path_perf,
             sep="|",
             names=headers_perf,
