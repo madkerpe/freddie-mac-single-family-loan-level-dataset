@@ -16,6 +16,15 @@ def drop_short_sequences(df_orig_labeled, df_perf_labeled, min_length):
 
     return df_orig_labeled.drop(df_orig_too_short_index), df_perf_labeled.drop(df_perf_too_short_index)
 
+def drop_long_sequences(df_orig_labeled, df_perf_labeled, max_length):
+    df_perf_too_long = df_perf_labeled[df_perf_labeled["TOTAL_OBSERVED_LENGTH"] > max_length]
+    df_perf_too_long_index = df_perf_too_long.index
+
+    df_orig_too_long = df_orig_labeled[df_orig_labeled["TOTAL_OBSERVED_LENGTH"] > max_length]
+    df_orig_too_long_index = df_orig_too_long.index
+
+    return df_orig_labeled.drop(df_orig_too_long_index), df_perf_labeled.drop(df_perf_too_long_index)
+
 def select_specific_original_loan_term(df_orig, df_perf, loan_terms_list):
     df_orig = df_orig[df_orig["ORIGINAL_LOAN_TERM"].isin(loan_terms_list)]
 
